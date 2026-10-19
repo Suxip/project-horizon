@@ -12,6 +12,8 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp>{
+  ///
+  // Main app is stateful so that it can own the stream (has initState())
   late final TestStreamSource source;
   late final Stream<String> statusStream;
 
@@ -27,19 +29,18 @@ class _MainAppState extends State<MainApp>{
     return MaterialApp(
       home: Scaffold(
         body: Column (
-          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Align(
               alignment: Alignment.topLeft,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(LEFT_INDENT+10, 50, 0, 0),
+                padding: EdgeInsets.fromLTRB(LEFT_INDENT+10, 50, 0, 0), // placement with respect to edge
                 child: Text(
                   "Live output", 
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  // textAlign: TextAlign.left,
                 ),
               ),
             ),
+            // 3 boxes
             HardwareStatus(),
             ModelStatus(),
             StreamStatusBox(stream: statusStream),
@@ -51,6 +52,11 @@ class _MainAppState extends State<MainApp>{
   }
 }
 
+/*
+  Box 1: Hardware status
+  Currently has placeholder button to change box color, later we would want to have red/green circle icon
+  instead of the button and functionality to change color upon trigger (which would be connection success)
+*/
 class HardwareStatus extends StatefulWidget {
   const HardwareStatus({super.key});
   @override
@@ -64,18 +70,18 @@ class _HardwareStatusState extends State<HardwareStatus> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 15, 100, 5),
+      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 15, 100, 5), // distance from edge (left/right edges == screen edge; top/bottom edges == Text/ModelStatus widgets)
       decoration: BoxDecoration(
         color: boxcol,
         borderRadius: BorderRadius.circular(100),
         border: Border.all(width: 2, color: Colors.black),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Aligns children to the left
-        crossAxisAlignment: CrossAxisAlignment.center, // Vertical alignment
+        mainAxisAlignment: MainAxisAlignment.start, // aligns children to the left
+        crossAxisAlignment: CrossAxisAlignment.center, // vertical alignment
         children: [
           Container(     
-            padding: EdgeInsets.fromLTRB(25, 25, 15, 25),     
+            padding: EdgeInsets.fromLTRB(25, 25, 15, 25), // distance from box edges    
             child: Align(alignment: Alignment.centerLeft, child: Text("Hardware Status", style:TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
           ),
           Spacer(),
@@ -108,21 +114,21 @@ class _ModelStatusState extends State<ModelStatus> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 5, 100, 5),
+      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 5, 100, 5), // distance from edge (left/right edges == screen edge; top/bottom edges == ModelStatus/StreamStatus widgets)
       decoration: BoxDecoration(
         color: boxcol,
         borderRadius: BorderRadius.circular(100),
         border: Border.all(width: 2, color: Colors.black),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Aligns children to the left
-        crossAxisAlignment: CrossAxisAlignment.center, // Vertical alignment
+        mainAxisAlignment: MainAxisAlignment.start, // aligns children to the left
+        crossAxisAlignment: CrossAxisAlignment.center, // vertical alignment
         children: [
           Container(     
-            padding: EdgeInsets.fromLTRB(25, 25, 15, 25),     
+            padding: EdgeInsets.fromLTRB(25, 25, 15, 25), // distance from box edges     
             child: Align(alignment: Alignment.centerLeft, child: Text("Model Status", style:TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
           ),
-          Spacer(),
+          Spacer(), // dynamic fill of space btwn Text and Button
           IconButton(
             onPressed: () {
               setState(() {
@@ -139,7 +145,7 @@ class _ModelStatusState extends State<ModelStatus> {
   }
 }
 
-class TestStreamSource { // to replace w sensor output
+class TestStreamSource { // to replace w sensor output, just outputs tests[i] on 1.5s intervals
   late final Stream<String> messages = _generateMessages();
   final Duration delay = Duration(seconds: 1, milliseconds: 500);
 
@@ -151,7 +157,7 @@ class TestStreamSource { // to replace w sensor output
       yield tests[ind];
       ind++;
     }
-    // close stream?
+    // close stream? won't be necessary when we actually have a stream since we want it to stay open
   }
 }
 
@@ -163,22 +169,23 @@ class StreamStatusBox extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(0, 10, LEFT_INDENT, 25),
+      margin: EdgeInsets.fromLTRB(0, 10, LEFT_INDENT, 25), // 25 pixels of spacing below SizedBox 
       decoration: BoxDecoration(
         color: Colors.grey,
         borderRadius: BorderRadius.circular(50),
         border: Border.all(width: 2, color: Colors.black),
       ),
       child: SizedBox(
-        width: 325,
+        width: 325, // experimental values
         height: 400,
         child: Container(
-          margin: EdgeInsets.all(20),
+          margin: EdgeInsets.all(20), // text spacing from edges of SizedBox
           child: Align(
             alignment: Alignment.topLeft,
             child: StreamBuilder<String>(
               stream: stream,
-              builder: (context, snapshot) {
+              builder: (context, snapshot) { 
+                // upon post to stream, this is called with BuildContext context and AsyncSnapshot<String> which has the string in .data (maybe timestamp in .timestamp?)
                 return Text(
                   snapshot.data ?? "hi",
                   style: TextStyle(fontSize: 24),
