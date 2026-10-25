@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 void main() => runApp(const MainApp());
@@ -51,7 +53,9 @@ class LiveOutputPage extends StatefulWidget {
 
 class _LiveOutputPageState extends State<LiveOutputPage> {
   DemoState _demoState = DemoState.connected;
-  late final Stream<String> _statusStream;
+  final List<String> _messages = [];
+  final ScrollController _outputScroll = ScrollController();
+  late final StreamSubscription<String> _subscription;
 
   ConnectionStatus get _hardwareStatus => switch (_demoState) {
     DemoState.connecting => ConnectionStatus.connecting,
@@ -72,7 +76,26 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
   @override
   void initState() {
     super.initState();
-    _statusStream = TestStreamSource().messages;
+    // Replace this demo source with the hardware/model stream when available.
+    _subscription = TestStreamSource().messages.listen((message) {
+      if (!mounted) return;
+      setState(() => _messages.add(message));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_outputScroll.hasClients) return;
+        _outputScroll.animateTo(
+          _outputScroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    _outputScroll.dispose();
+    super.dispose();
   }
 
   @override
@@ -131,16 +154,15 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
                                 color: const Color(0xFFE3E3E3),
                               ),
                             ),
-                            child: StreamBuilder<String>(
-                              stream: _statusStream,
-                              builder: (context, snapshot) => SingleChildScrollView(
-                                child: SelectableText(
-                                  snapshot.data ??
-                                      'Text from your hardware and model appears here. New lines stream in as they arrive.',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    height: 1.65,
-                                  ),
+                            child: SingleChildScrollView(
+                              controller: _outputScroll,
+                              child: SelectableText(
+                                _messages.isEmpty
+                                    ? 'Text from your hardware and model appears here. New lines stream in as they arrive.'
+                                    : _messages.join('\n\n'),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  height: 1.65,
                                 ),
                               ),
                             ),
