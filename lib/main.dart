@@ -23,11 +23,23 @@ class MainApp extends StatelessWidget {
 }
 
 enum ConnectionStatus {
-  connected('Connected', Color(0xFF008A09));
+  connected('Connected', Color(0xFF008A09)),
+  connecting('Connecting', Color(0xFFBE8500)),
+  offline('Offline', Color(0xFFCA3939));
 
   const ConnectionStatus(this.label, this.color);
   final String label;
   final Color color;
+}
+
+enum DemoState {
+  connected('All connected'),
+  connecting('Hardware connecting'),
+  hardwareOffline('Hardware offline'),
+  modelOffline('Model offline');
+
+  const DemoState(this.label);
+  final String label;
 }
 
 class LiveOutputPage extends StatefulWidget {
@@ -38,7 +50,24 @@ class LiveOutputPage extends StatefulWidget {
 }
 
 class _LiveOutputPageState extends State<LiveOutputPage> {
+  DemoState _demoState = DemoState.connected;
   late final Stream<String> _statusStream;
+
+  ConnectionStatus get _hardwareStatus => switch (_demoState) {
+    DemoState.connecting => ConnectionStatus.connecting,
+    DemoState.hardwareOffline => ConnectionStatus.offline,
+    _ => ConnectionStatus.connected,
+  };
+
+  ConnectionStatus get _modelStatus => _demoState == DemoState.modelOffline
+      ? ConnectionStatus.offline
+      : ConnectionStatus.connected;
+
+  String get _readiness => switch (_demoState) {
+    DemoState.connected => 'Ready',
+    DemoState.connecting => 'Connecting…',
+    _ => 'Waiting for connection',
+  };
 
   @override
   void initState() {
@@ -83,13 +112,10 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
                           const SizedBox(height: 28),
                           StatusPill(
                             label: 'Hardware',
-                            status: ConnectionStatus.connected,
+                            status: _hardwareStatus,
                           ),
                           const SizedBox(height: 12),
-                          StatusPill(
-                            label: 'Model',
-                            status: ConnectionStatus.connected,
-                          ),
+                          StatusPill(label: 'Model', status: _modelStatus),
                           const SizedBox(height: 24),
                           Container(
                             height: (constraints.maxHeight - 330).clamp(
@@ -122,13 +148,48 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
                           const SizedBox(height: 24),
                           Row(
                             children: [
-                              Expanded(child: Text('Ready')),
+                              Expanded(child: Text(_readiness)),
                               const Text('Read-only'),
                             ],
                           ),
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'Demo connection states',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF777777)),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: DemoState.values.map((state) {
+                      return OutlinedButton(
+                        onPressed: () => setState(() => _demoState = state),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF252525),
+                          backgroundColor: _demoState == state
+                              ? const Color(0xFFEFF6EF)
+                              : Colors.white,
+                          side: BorderSide(
+                            color: _demoState == state
+                                ? const Color(0xFF87A889)
+                                : const Color(0xFFD5D5D5),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(state.label),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
