@@ -1,201 +1,181 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MainApp());
-}
-const double LEFT_INDENT = 25;
+void main() => runApp(const MainApp());
 
-class MainApp extends StatefulWidget {
+class MainApp extends StatelessWidget {
   const MainApp({super.key});
-  @override
-  State<MainApp> createState() => _MainAppState();
-}
-
-class _MainAppState extends State<MainApp>{
-  ///
-  // Main app is stateful so that it can own the stream (has initState())
-  late final TestStreamSource source;
-  late final Stream<String> statusStream;
-
-  @override
-  void initState() { // need to add stream
-    super.initState();
-    source = TestStreamSource();
-    statusStream = source.messages;
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: Column (
-          children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(LEFT_INDENT+10, 50, 0, 0), // placement with respect to edge
-                child: Text(
-                  "Live output", 
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                ),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF008A09)),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Color(0xFF171717), fontSize: 18),
+        ),
+      ),
+      home: const LiveOutputPage(),
+    );
+  }
+}
+
+class LiveOutputPage extends StatefulWidget {
+  const LiveOutputPage({super.key});
+
+  @override
+  State<LiveOutputPage> createState() => _LiveOutputPageState();
+}
+
+class _LiveOutputPageState extends State<LiveOutputPage> {
+  late final Stream<String> _statusStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusStream = TestStreamSource().messages;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 600;
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: wide ? 24 : 12,
+                vertical: wide ? 24 : 12,
               ),
-            ),
-            // 3 boxes
-            HardwareStatus(),
-            ModelStatus(),
-            StreamStatusBox(stream: statusStream),
-            // text box here
-          ],
-        )
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: const Color(0xFFD8D8D8)),
+                        borderRadius: BorderRadius.circular(wide ? 40 : 28),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Live output',
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          const StatusBar(
+                            label: 'Hardware Status',
+                            color: Colors.blue,
+                          ),
+                          const SizedBox(height: 12),
+                          const StatusBar(
+                            label: 'Model Status',
+                            color: Colors.green,
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            height: (constraints.maxHeight - 330).clamp(
+                              280.0,
+                              520.0,
+                            ),
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCFCFB),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE3E3E3),
+                              ),
+                            ),
+                            child: StreamBuilder<String>(
+                              stream: _statusStream,
+                              builder: (context, snapshot) => SingleChildScrollView(
+                                child: SelectableText(
+                                  snapshot.data ??
+                                      'Text from your hardware and model appears here. New lines stream in as they arrive.',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    height: 1.65,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(child: Text('Ready')),
+                              const Text('Read-only'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-/*
-  Box 1: Hardware status
-  Currently has placeholder button to change box color, later we would want to have red/green circle icon
-  instead of the button and functionality to change color upon trigger (which would be connection success)
-*/
-class HardwareStatus extends StatefulWidget {
-  const HardwareStatus({super.key});
+class StatusBar extends StatefulWidget {
+  const StatusBar({super.key, required this.label, required this.color});
+  final String label;
+  final Color color;
   @override
-  State<HardwareStatus> createState() => _HardwareStatusState();
+  State<StatusBar> createState() => _StatusBarState();
 }
 
-class _HardwareStatusState extends State<HardwareStatus> {
-  // etc
-  Color boxcol = Colors.blue;
-
+class _StatusBarState extends State<StatusBar> {
+  bool _offline = false;
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 15, 100, 5), // distance from edge (left/right edges == screen edge; top/bottom edges == Text/ModelStatus widgets)
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: boxcol,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(width: 2, color: Colors.black),
+        color: _offline ? Colors.red : widget.color,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.black),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // aligns children to the left
-        crossAxisAlignment: CrossAxisAlignment.center, // vertical alignment
         children: [
-          Container(     
-            padding: EdgeInsets.fromLTRB(25, 25, 15, 25), // distance from box edges    
-            child: Align(alignment: Alignment.centerLeft, child: Text("Hardware Status", style:TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
-          ),
-          Spacer(),
+          Expanded(child: Text(widget.label)),
           IconButton(
-            onPressed: () {
-              setState(() {
-                boxcol = boxcol == Colors.red ? Colors.blue : Colors.red;
-              });
-              print("CHANGE COLOR wooaaaa");
-            },
+            onPressed: () => setState(() => _offline = !_offline),
             icon: const Icon(Icons.circle),
-            iconSize: 40,
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 }
 
-class ModelStatus extends StatefulWidget { // copy of hardware status state
-  const ModelStatus({super.key});
-  @override
-  State<ModelStatus> createState() => _ModelStatusState();
-}
-
-class _ModelStatusState extends State<ModelStatus> {
-  // etc
-  Color boxcol = Colors.green;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(LEFT_INDENT, 5, 100, 5), // distance from edge (left/right edges == screen edge; top/bottom edges == ModelStatus/StreamStatus widgets)
-      decoration: BoxDecoration(
-        color: boxcol,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(width: 2, color: Colors.black),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // aligns children to the left
-        crossAxisAlignment: CrossAxisAlignment.center, // vertical alignment
-        children: [
-          Container(     
-            padding: EdgeInsets.fromLTRB(25, 25, 15, 25), // distance from box edges     
-            child: Align(alignment: Alignment.centerLeft, child: Text("Model Status", style:TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
-          ),
-          Spacer(), // dynamic fill of space btwn Text and Button
-          IconButton(
-            onPressed: () {
-              setState(() {
-                boxcol = boxcol == Colors.red ? Colors.green : Colors.red;
-              });
-              print("CHANGE COLOR wooaaaa");
-            },
-            icon: const Icon(Icons.circle),
-            iconSize: 40,
-          )
-        ],
-      )
-    );
-  }
-}
-
-class TestStreamSource { // to replace w sensor output, just outputs tests[i] on 1.5s intervals
-  late final Stream<String> messages = _generateMessages();
-  final Duration delay = Duration(seconds: 1, milliseconds: 500);
-
-  Stream<String> _generateMessages() async* {
-    List<String> tests = ["test test test", "table ahead", "beep boop", "Anna is standing 10 feet ahead facing you", "Halt!"];
-    int ind = 0;
-    while (ind < tests.length) {
-      await Future<void>.delayed(delay); // wait delay
-      yield tests[ind];
-      ind++;
+class TestStreamSource {
+  Stream<String> get messages async* {
+    const messages = [
+      'test test test',
+      'table ahead',
+      'beep boop',
+      'Anna is standing 10 feet ahead facing you',
+      'Halt!',
+    ];
+    for (final message in messages) {
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      yield message;
     }
-    // close stream? won't be necessary when we actually have a stream since we want it to stay open
   }
 }
-
-class StreamStatusBox extends StatelessWidget{
-  const StreamStatusBox({super.key, required this.stream});
-  final Stream<String> stream; // input stream will be yolo output?
-  // need a stream to connect yolo model and bluetooth output
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(0, 10, LEFT_INDENT, 25), // 25 pixels of spacing below SizedBox 
-      decoration: BoxDecoration(
-        color: Colors.grey,
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(width: 2, color: Colors.black),
-      ),
-      child: SizedBox(
-        width: 325, // experimental values
-        height: 400,
-        child: Container(
-          margin: EdgeInsets.all(20), // text spacing from edges of SizedBox
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: StreamBuilder<String>(
-              stream: stream,
-              builder: (context, snapshot) { 
-                // upon post to stream, this is called with BuildContext context and AsyncSnapshot<String> which has the string in .data (maybe timestamp in .timestamp?)
-                return Text(
-                  snapshot.data ?? "hi",
-                  style: TextStyle(fontSize: 24),
-                );
-              }
-            ) 
-          ),
-        ), // this container is for spacing from edges of box
-      ),
-    );
-  }
-}
-
