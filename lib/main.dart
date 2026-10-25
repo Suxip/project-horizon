@@ -22,6 +22,14 @@ class MainApp extends StatelessWidget {
   }
 }
 
+enum ConnectionStatus {
+  connected('Connected', Color(0xFF008A09));
+
+  const ConnectionStatus(this.label, this.color);
+  final String label;
+  final Color color;
+}
+
 class LiveOutputPage extends StatefulWidget {
   const LiveOutputPage({super.key});
 
@@ -73,14 +81,14 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
                             ),
                           ),
                           const SizedBox(height: 28),
-                          const StatusBar(
-                            label: 'Hardware Status',
-                            color: Colors.blue,
+                          StatusPill(
+                            label: 'Hardware',
+                            status: ConnectionStatus.connected,
                           ),
                           const SizedBox(height: 12),
-                          const StatusBar(
-                            label: 'Model Status',
-                            color: Colors.green,
+                          StatusPill(
+                            label: 'Model',
+                            status: ConnectionStatus.connected,
                           ),
                           const SizedBox(height: 24),
                           Container(
@@ -132,32 +140,35 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
   }
 }
 
-class StatusBar extends StatefulWidget {
-  const StatusBar({super.key, required this.label, required this.color});
-  final String label;
-  final Color color;
-  @override
-  State<StatusBar> createState() => _StatusBarState();
-}
+class StatusPill extends StatelessWidget {
+  const StatusPill({super.key, required this.label, required this.status});
 
-class _StatusBarState extends State<StatusBar> {
-  bool _offline = false;
+  final String label;
+  final ConnectionStatus status;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: _offline ? Colors.red : widget.color,
+        border: Border.all(color: const Color(0xFFE5E5E5)),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.black),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(child: Text(widget.label)),
-          IconButton(
-            onPressed: () => setState(() => _offline = !_offline),
-            icon: const Icon(Icons.circle),
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: status.color,
+              shape: BoxShape.circle,
+            ),
           ),
+          Text(label),
+          Text(status.label, style: const TextStyle(color: Color(0xFF606060))),
         ],
       ),
     );
