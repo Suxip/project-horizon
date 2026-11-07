@@ -58,6 +58,7 @@ class PhotoReceiver {
 
   /// Flushes/closes the file and returns it once the expected size is reached.
   Future<File> finishTransfer() async {
+    // Throws Exceptions for failed or incomplete transfer
     final output = _output;
     final destination = _destination;
 
