@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'services/mock_transport.dart';
-import 'services/photo_receiver.dart';
+import 'services/transfer_coordinator.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 void main() => runApp(const MainApp());
@@ -77,35 +77,30 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
     _ => 'Waiting for connection',
   };
 
-    Future<void> _transferPhoto() async {
-      // 1. Read bundled asset from app package
-      final byteData = await rootBundle.load('lib/images/sample.png');
-      final buffer = byteData.buffer.asUint8List();
+  Future<void> _transferPhoto() async {
+    // 1. Read bundled asset from app package
+    final byteData = await rootBundle.load('lib/images/sample.png');
+    final buffer = byteData.buffer.asUint8List();
 
-      // 2. Write to a temporary file for MockTransport; THIS CAN BE DONE WITHOUT TEMP BY MODIFYING MOCK_TRANSPORT
-      final tempDir = Directory.systemTemp;
-      final source = File('${tempDir.path}/source_sample.png');
-      await source.writeAsBytes(buffer);
+    // 2. Write to a temporary file for MockTransport; THIS CAN BE DONE WITHOUT TEMP BY MODIFYING MOCK_TRANSPORT
+    final tempDir = Directory.systemTemp;
+    final source = File('${tempDir.path}/source_sample.png');
+    await source.writeAsBytes(buffer);
 
-      // 3. Destination for PhotoReceiver
-      final destination = File('${tempDir.path}/received.png');
+    // 3. Coordinate transport -> disk via TransferCoordinator
+    final transport = MockTransport(sourceFile: source);
+    final coordinator = TransferCoordinator();
 
-      // 4. Run transport -> receiver
-      final transport = MockTransport(sourceFile: source);
-      final receiver = PhotoReceiver();
+    final savedFile = await coordinator.receivePhoto(
+      transport: transport,
+      saveDirectory: tempDir,
+      onProgress: (progress) {
+        debugPrint('Transfer progress: ${(progress * 100).toStringAsFixed(1)}%'); // per chunk
+      },
+    );
 
-      await receiver.startTransfer(
-        destination: destination,
-        expectedBytes: await source.length(),
-      );
-
-      await for (final chunk in transport.receive()) {
-        await receiver.receiveChunk(chunk);
-      }
-
-      final savedFile = await receiver.finishTransfer();
-      print('Photo successfully saved to: ${savedFile.path}');
-    }
+    debugPrint('Photo successfully saved to: ${savedFile.path}');
+  }
 
   @override
   void initState() {
