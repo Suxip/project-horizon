@@ -18,7 +18,7 @@ class TransferMetadata {
 
   /// Encodes this metadata into an 8-byte binary header:
   /// - Bytes 0..3: [expectedBytes] as a big-endian uint32.
-  /// - Bytes 4..7: [fileType] as 4 ASCII characters (padded with null bytes).
+  /// - Bytes 4..7: [fileType] as 4 ASCII characters (padded with null bytes on left).
   Uint8List toBytes() {
     final buffer = Uint8List(headerSize);
     final bdata = ByteData.sublistView(buffer);
