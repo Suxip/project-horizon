@@ -95,9 +95,10 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
     */
 
     final tempDir = Directory.systemTemp;
-    final transport = SerialTransport("COM3");
+    SerialTransport? transport;
     final coordinator = TransferCoordinator();
     try { // ensure dispose
+      transport = SerialTransport("COM3");
       final savedFile = await coordinator.receivePhoto(
         transport: transport,
         saveDirectory: tempDir,
@@ -111,7 +112,7 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
     } catch (e) {
       debugPrint("Failed transfer: $e");
     } finally{
-      transport.dispose();
+      transport?.dispose();
     }
   }
 

@@ -16,7 +16,10 @@ class SerialTransport implements PhotoTransport {
       : port = SerialPort(portName) { // NOTE: this syntax just means the field 'port' is assigned b4 construction, necessary for a final variable
         // attempt to open
         if (!port.openRead()) {
-          throw Exception('Failed to open $portName: ${SerialPort.lastError}');
+          final available = SerialPort.availablePorts;
+          throw Exception(
+            'Failed to open $portName: ${SerialPort.lastError}. Available ports: ${available.isEmpty ? 'None found' : available.join(', ')}',
+          );
         }
         _reader = SerialPortReader(port);
       }
