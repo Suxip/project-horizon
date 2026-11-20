@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'services/mock_transport.dart';
+import 'services/serial_transport.dart';
 import 'services/transfer_coordinator.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
@@ -78,28 +79,40 @@ class _LiveOutputPageState extends State<LiveOutputPage> {
   };
 
   Future<void> _transferPhoto() async {
-    // 1. Read bundled asset from app package
-    final byteData = await rootBundle.load('lib/images/sample.png');
-    final buffer = byteData.buffer.asUint8List();
+    // Earlier work with mock transport
+    /*
+    // // 1. Read bundled asset from app package
+    // final byteData = await rootBundle.load('lib/images/sample.png');
+    // final buffer = byteData.buffer.asUint8List();
 
-    // 2. Write to a temporary file for MockTransport; THIS CAN BE DONE WITHOUT TEMP BY MODIFYING MOCK_TRANSPORT
+    // // 2. Write to a temporary file for MockTransport; THIS CAN BE DONE WITHOUT TEMP BY MODIFYING MOCK_TRANSPORT
     final tempDir = Directory.systemTemp;
-    final source = File('${tempDir.path}/source_sample.png');
-    await source.writeAsBytes(buffer);
+    // final source = File('${tempDir.path}/source_sample.png');
+    // await source.writeAsBytes(buffer);
 
-    // 3. Coordinate transport -> disk via TransferCoordinator
-    final transport = MockTransport(sourceFile: source);
+    // // 3. Coordinate transport -> disk via TransferCoordinator
+    // final transport = MockTransport(sourceFile: source);
+    */
+
+    final tempDir = Directory.systemTemp;
+    final transport = SerialTransport("COM3");
     final coordinator = TransferCoordinator();
+    try { // ensure dispose
+      final savedFile = await coordinator.receivePhoto(
+        transport: transport,
+        saveDirectory: tempDir,
+        onProgress: (progress) {
+          debugPrint('Transfer progress: ${(progress * 100).toStringAsFixed(1)}%'); // per chunk
+        },
+      );
 
-    final savedFile = await coordinator.receivePhoto(
-      transport: transport,
-      saveDirectory: tempDir,
-      onProgress: (progress) {
-        debugPrint('Transfer progress: ${(progress * 100).toStringAsFixed(1)}%'); // per chunk
-      },
-    );
-
-    debugPrint('Photo successfully saved to: ${savedFile.path}');
+      debugPrint('Photo successfully saved to: ${savedFile.path}');
+      // '${saveDirectory.path}/received_$timestamp.${metadata.fileType}' from transfer_coordinator
+    } catch (e) {
+      debugPrint("Failed transfer: $e");
+    } finally{
+      transport.dispose();
+    }
   }
 
   @override

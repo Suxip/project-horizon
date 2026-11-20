@@ -13,6 +13,9 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
   // this is roughly what we expect hardware to do?
   // the logic handling it should be in transfer_coordinator --> next step
+
+  // important changes for use with android: should just send bytes over 
+  // without checking length; no need to check header since it's handled in transfer_coordinator
 */
 class BluetoothTransport implements PhotoTransport {
   BluetoothTransport({
@@ -43,7 +46,7 @@ class BluetoothTransport implements PhotoTransport {
     // Listen for incoming Bluetooth data
     // and yield each received chunk.
     bool headerComplete = false;
-    BytesBuilder header = new BytesBuilder();
+    BytesBuilder header = BytesBuilder();
     await for (final chunk in connection.input!) { 
       if (!headerComplete) { 
         // construct from chunk (add from stream)

@@ -7,8 +7,8 @@ With **Phase 2 (Transport-Independent Architecture)** completed and verified wit
 3. **Sink Layer** ([`PhotoReceiver`](./lib/services/photo_receiver.dart#L5)): Writes raw payload chunks directly to disk using native `dart:io`.
 
 The next milestone focuses on **closing the visual loop in the UI** and **establishing the complete physical two-way round trip over Bluetooth Classic (RFCOMM / SPP)**:
-- **Computer (Simulated RPI / Wearable Hardware)**: Streams test images to the app and receives/plays returned synthesized audio guidance through its speakers.
-- **Android Phone (Horizon App Brain)**: Receives the image over Bluetooth Classic, saves to disk via [`PhotoReceiver`](./lib/services/photo_receiver.dart#L5), displays progress/image in the UI, and streams an MP3 response back over the same RFCOMM socket.
+- **Raspberry Pi (Wearable Hardware)**: Captures/reads test images, streams them over Bluetooth Classic RFCOMM to the computer, and receives/plays returned synthesized audio guidance through attached speakers/headphones.
+- **Computer (Horizon App Desktop)**: Receives the image over the incoming Bluetooth serial COM port, saves to disk via [`PhotoReceiver`](./lib/services/photo_receiver.dart#L5), displays progress and rendered image in the desktop UI, and streams an MP3 response back over the serial pipe.
 
 ---
 
@@ -37,24 +37,28 @@ The next milestone focuses on **closing the visual loop in the UI** and **establ
 
 ---
 
-### 2. Forward Stream: Image Transfer (Computer -> Android Phone)
-- [ ] **Pair Devices via OS Bluetooth**:
-  - Pair the Android phone with the Computer in Windows / OS Bluetooth Settings to bind the RFCOMM serial COM port link.
-- [ ] **2.1 Computer (Simulated RPI Sender)**:
-  - Create a lightweight test script (Python using `pyserial` or `pybluez`) targeting the paired Bluetooth serial COM port (e.g. `COM3`):
-    - Encodes 8-byte header via [`TransferMetadata`](./lib/services/transfer_metadata.dart#L4): 4 bytes big-endian file length + 4 bytes format (`b'jpg '` / `b'png '`).
-    - Writes the 8-byte header first over the serial port.
-    - Streams raw image bytes in consecutive chunks (4 KB – 16 KB buffers) at full RFCOMM bus speed (~2–3 Mbps).
-- [ ] **2.2 Android Horizon App (Receiver / Sink)**:
-  - Connect to the computer's paired Bluetooth device from the Horizon App (or accept incoming connection).
-  - Pass [`BluetoothTransport`](./lib/services/bluetooth_transport.dart#L6) into [`TransferCoordinator.receivePhoto()`](./lib/services/transfer_coordinator.dart#L21).
-  - [`PhotoReceiver`](./lib/services/photo_receiver.dart#L5) streams chunks directly into app storage via native `dart:io`.
-  - Update UI progress indicator (`0%` to `100%`) as chunks arrive.
-  - On completion, render the saved photo on screen and acknowledge receipt.
+### 2. Forward Stream: Image Transfer (Raspberry Pi -> Computer [Horizon App])
+- [ ] **Pair Devices via OS Bluetooth & Assign COM Port**:
+  - Pair the Raspberry Pi with the Computer via Bluetooth settings.
+  - On the Computer (Windows/Desktop), configure an incoming Bluetooth Serial Port (SPP) bound to a virtual COM port (e.g., `COM3`, `COM4` under *Bluetooth Settings -> COM Ports*).
+  - On the Raspberry Pi, verify the paired device link via `bluetoothctl` or RFCOMM bind (`rfcomm bind 0 <PC_MAC_ADDRESS>`).
+- [ ] **2.1 Raspberry Pi (Hardware Sender)**:
+  - Create a sender script on the RPI (Python using `pybluez` or `pyserial` on `/dev/rfcomm0`):
+    - Reads sample test image (or captures from Pi camera module via `picamera2`/`libcamera`).
+    - Encodes the 8-byte header via [`TransferMetadata`](./lib/services/transfer_metadata.dart#L4): 4 bytes big-endian length (`struct.pack('>I', size)`) + 4 ASCII bytes format (`b'jpg '` / `b'png '`).
+    - Writes the 8-byte header first over the RFCOMM socket / serial port.
+    - Streams raw image bytes sequentially in chunks (4 KB – 16 KB buffers).
+- [ ] **2.2 Computer Horizon App (Desktop Receiver / Sink)**:
+  - Implement desktop serial transport (e.g. `SerialTransport` implementing [`PhotoTransport`](./lib/services/photo_transport.dart#L7) using `flutter_libserialport` or Windows serial stream listening on the designated `COM` port).
+  <!--Rework will be necessary if stream is to be held open: idea to use ACK signal to note end of transmission and it will check if received bytes is correct, else send failed notification and keep going -->
+  - Pass the transport into [`TransferCoordinator.receivePhoto()`](./lib/services/transfer_coordinator.dart#L21).
+  - Stream chunks directly to local storage via [`PhotoReceiver`](./lib/services/photo_receiver.dart#L5) using native `dart:io`.
+  - Update desktop UI progress indicator (`0%` to `100%`) in real-time as chunks arrive.
+  - On completion, render the saved photo on screen (`Image.file`) and display throughput statistics. OPTIONALLY.
 
 ---
 
-### 3. Return Stream: Audio Transfer & Playback (Android Phone -> Computer)
+### 3. Return Stream: Audio Transfer & Playback (Android Phone -> Computer) (NEEDS update to be computer later android phone to rpi)
 - [ ] **3.1 Symmetric Wire Protocol for Audio**:
   - Reuse the identical 8-byte header structure for audio responses:
     - Encodes 4-byte big-endian length + 4-byte format (`"mp3 "`):

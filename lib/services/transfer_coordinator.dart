@@ -63,11 +63,17 @@ class TransferCoordinator {
             );
             await _receiver.receiveChunk(leftover);
             onProgress?.call(_receiver.progress);
+            if (_receiver.receivedBytes >= _receiver.expectedBytes) {
+              break; 
+            }
           }
         } else {
           // Step 2: Feed subsequent payload chunks directly to PhotoReceiver
           await _receiver.receiveChunk(chunk);
           onProgress?.call(_receiver.progress);
+          if (_receiver.receivedBytes >= _receiver.expectedBytes) {
+              break; 
+          }
         }
       }
 
